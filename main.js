@@ -400,6 +400,18 @@ function buildLevel(level) {
   setMessage(`Wave ${level} entering the arena`, 2.4);
 }
 
+function jumpToLevel(level) {
+  if (!state.audioReady) { synth.ensure(); state.audioReady = true; }
+  resetRun(true);
+  state.level = level;
+  buildLevel(level);
+  positionPaddle();
+  resetBall();
+  syncHud();
+  hud.overlay.classList.remove("visible");
+  setMessage(`DEV — Wave ${level}`, 2.5);
+}
+
 function startGame() {
   synth.ensure();
   state.audioReady = true;
@@ -1336,6 +1348,11 @@ function attachEvents() {
       } else {
         launchBall();
       }
+    }
+    if (event.ctrlKey && event.shiftKey && event.code.startsWith("Digit")) {
+      event.preventDefault();
+      const digit = parseInt(event.code.replace("Digit", ""), 10);
+      jumpToLevel(digit === 0 ? 10 : digit);
     }
     if (event.code === "Escape") {
       event.preventDefault();
