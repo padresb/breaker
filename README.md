@@ -43,7 +43,7 @@ python3 -m http.server 4173
 
 ## Wave Progression
 
-Waves cycle through three grid layouts (waves → spire → rings). Brick HP scales every 4 levels.
+Waves cycle through three grid layouts (waves → spire → rings) through wave 6. Waves 7–11 add five named late-game set pieces, and later waves return to the standard procedural rotation while movement speed continues to scale. Brick HP scales every 4 levels.
 
 ### Moving Brick System
 
@@ -54,7 +54,19 @@ Waves cycle through three grid layouts (waves → spire → rings). Brick HP sca
 | 3 | Odd-numbered rows sweep left-right as a unit |
 | 4 | Armor bricks become pendulum sentinels (wide, slow oscillation) |
 | 5 | Drift + row sweep simultaneously |
-| 6+ | All three active; speed scales ~14% per wave beyond wave 6 |
+| 6+ | All three active; late-game waves tune drift/sweep cadence per profile |
+
+### Late-Game Wave Set Pieces
+
+| Wave | Theme |
+|---|---|
+| 7 | **Vortex Gate** — armored frame with a hollow center and pulse gate |
+| 8 | **Mirror Bastion** — mirrored wings, a central spine, and a fortified bridge |
+| 9 | **Skybridge** — layered support lanes with every row in motion |
+| 10 | **Shatter Crown** — corner fortresses around a volatile crown core |
+| 11 | **Bloom Engine** — dense crossfire lattice with the most aggressive motion mix |
+
+Beyond wave 11, the standard procedural wave rotation resumes with the higher late-game movement cadence.
 
 ## Overdrive
 

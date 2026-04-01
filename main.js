@@ -26,6 +26,165 @@ const brickTypes = {
   core: { hp: 4, score: 1200, color: "#a892ff" },
 };
 
+const lateWaveProfiles = {
+  7: {
+    name: "Vortex Gate",
+    cols: 11,
+    rows: 6,
+    driftChance: 0.62,
+    driftAmplitudeBoost: 1.08,
+    driftSpeedBoost: 0.96,
+    sweepSpeedBoost: 1.08,
+    sweepRows: (row) => row % 2 === 1,
+    speedScale: 1.08,
+    layout: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const centerRow = Math.floor(rows / 2);
+      const border = row === 0 || row === rows - 1 || col === 0 || col === cols - 1;
+      const gate = row === centerRow && Math.abs(col - centerCol) <= 2;
+      const ring = Math.abs(row - centerRow) + Math.abs(col - centerCol) === 2;
+      return border || gate || ring;
+    },
+    pickType: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const centerRow = Math.floor(rows / 2);
+      if (row === centerRow && col === centerCol) return "core";
+      if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) return "armor";
+      if (row === 1 || row === rows - 2) return Math.abs(col - centerCol) <= 2 ? "pulse" : "explosive";
+      if (Math.abs(col - centerCol) === 2) return "explosive";
+      if (Math.abs(row - centerRow) === 1 && Math.abs(col - centerCol) <= 1) return "pulse";
+      return null;
+    },
+  },
+  8: {
+    name: "Mirror Bastion",
+    cols: 11,
+    rows: 7,
+    driftChance: 0.7,
+    driftAmplitudeBoost: 1.1,
+    driftSpeedBoost: 1.02,
+    sweepSpeedBoost: 1.12,
+    sweepRows: (row) => row % 2 === 0,
+    speedScale: 1.14,
+    layout: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const midRow = Math.floor(rows / 2);
+      const wingDepth = row <= midRow ? row + 1 : rows - row;
+      const leftWing = col <= centerCol - 1 && col >= centerCol - wingDepth - 2;
+      const rightWing = col >= centerCol + 1 && col <= centerCol + wingDepth + 2;
+      const spine = col === centerCol && row !== 2 && row !== rows - 3;
+      const bridge = row === midRow && Math.abs(col - centerCol) <= 1;
+      return leftWing || rightWing || spine || bridge;
+    },
+    pickType: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const midRow = Math.floor(rows / 2);
+      if (row === midRow && col === centerCol) return "core";
+      if (col === centerCol) return row % 2 === 0 ? "pulse" : "armor";
+      if (row === midRow && Math.abs(col - centerCol) <= 1) return "explosive";
+      if (row === 0 || row === rows - 1 || col === 0 || col === cols - 1) return "armor";
+      if (Math.abs(col - centerCol) === 1) return "pulse";
+      if ((row + col) % 2 === 0) return "explosive";
+      return null;
+    },
+  },
+  9: {
+    name: "Skybridge",
+    cols: 10,
+    rows: 7,
+    driftChance: 0.76,
+    driftAmplitudeBoost: 1.16,
+    driftSpeedBoost: 1.05,
+    sweepSpeedBoost: 1.18,
+    sweepRows: () => true,
+    speedScale: 1.18,
+    layout: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const bridgeRow = Math.floor(rows / 2);
+      const railRows = [1, rows - 2];
+      const supportCols = [1, centerCol, cols - 2];
+      const bridge = row === bridgeRow;
+      const rail = railRows.includes(row) && Math.abs(col - centerCol) <= 3;
+      const support = supportCols.includes(col) && row <= bridgeRow + 1;
+      const deckPockets = row % 2 === 0 && Math.abs(col - centerCol) <= 2;
+      return bridge || rail || support || deckPockets;
+    },
+    pickType: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const bridgeRow = Math.floor(rows / 2);
+      if (row === bridgeRow && col === centerCol) return "core";
+      if (col === centerCol) return "pulse";
+      if (row === bridgeRow) return (col + row) % 2 === 0 ? "explosive" : "pulse";
+      if (row === 1 || row === rows - 2) return "armor";
+      if (col === 1 || col === cols - 2) return "armor";
+      if (Math.abs(col - centerCol) <= 1) return "pulse";
+      if ((row + col) % 2 === 0) return "basic";
+      return null;
+    },
+  },
+  10: {
+    name: "Shatter Crown",
+    cols: 11,
+    rows: 7,
+    driftChance: 0.68,
+    driftAmplitudeBoost: 1.2,
+    driftSpeedBoost: 1.06,
+    sweepSpeedBoost: 1.24,
+    sweepRows: (row) => row === 1 || row === 3 || row === 5,
+    speedScale: 1.24,
+    layout: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const centerRow = Math.floor(rows / 2);
+      const cornerFortress =
+        (row < 2 && (col < 3 || col > cols - 4)) ||
+        (row > rows - 3 && (col < 3 || col > cols - 4));
+      const crown = Math.abs(row - centerRow) + Math.abs(col - centerCol) <= 3;
+      const crownSpine = col === centerCol && row >= 1 && row <= rows - 2;
+      return cornerFortress || crown || crownSpine;
+    },
+    pickType: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const centerRow = Math.floor(rows / 2);
+      const edge = row === 0 || row === rows - 1 || col === 0 || col === cols - 1;
+      if (row === centerRow && col === centerCol) return "core";
+      if (edge) return "armor";
+      if (Math.abs(row - centerRow) + Math.abs(col - centerCol) <= 2) return "explosive";
+      if (col === centerCol || row === centerRow) return "pulse";
+      if ((row + col) % 2 === 0) return "armor";
+      return null;
+    },
+  },
+  11: {
+    name: "Bloom Engine",
+    cols: 11,
+    rows: 7,
+    driftChance: 0.85,
+    driftAmplitudeBoost: 1.28,
+    driftSpeedBoost: 1.1,
+    sweepSpeedBoost: 1.3,
+    sweepRows: (row) => row % 2 === 1,
+    speedScale: 1.32,
+    layout: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const centerRow = Math.floor(rows / 2);
+      const cross = row === centerRow || col === centerCol;
+      const bloom = Math.abs(row - centerRow) + Math.abs(col - centerCol) <= 3;
+      const petals = Math.abs(row - centerRow) === Math.abs(col - centerCol) && row !== centerRow;
+      return cross || bloom || petals;
+    },
+    pickType: ({ row, col, cols, rows }) => {
+      const centerCol = Math.floor(cols / 2);
+      const centerRow = Math.floor(rows / 2);
+      if (row === centerRow && col === centerCol) return "core";
+      if (row === centerRow || col === centerCol) return (row + col) % 2 === 0 ? "pulse" : "basic";
+      if (Math.abs(row - centerRow) + Math.abs(col - centerCol) <= 2) return "explosive";
+      if (Math.abs(row - centerRow) === Math.abs(col - centerCol)) return "armor";
+      if ((row + col) % 2 === 0) return "pulse";
+      return null;
+    },
+  },
+};
+
 const state = {
   width: 1280,
   height: 720,
@@ -39,6 +198,8 @@ const state = {
   overdrive: 0,
   overdriveTimer: 0,
   pendingWaveTimer: 0,
+  clock: 0,
+  scenePulse: 0,
   shake: 0,
   flash: 0,
   timeScale: 1,
@@ -50,6 +211,8 @@ const state = {
   message: "Stabilizing arena...",
   messageTimer: 0,
   pointerX: 0,
+  inputMode: "keyboard",
+  pointerActive: false,
   particles: [],
   floatingTexts: [],
   pickups: [],
@@ -63,9 +226,12 @@ const state = {
   paddle: {
     x: 0,
     y: 0,
+    vx: 0,
     width: 112,
     height: 18,
     speed: 1100,
+    acceleration: 6200,
+    brake: 5600,
     baseWidth: 112,
     glow: 0,
     shieldTimer: 0,
@@ -81,10 +247,42 @@ const state = {
   },
 };
 
+function getLateWaveProfile(level) {
+  return lateWaveProfiles[level] || null;
+}
+
+function pickDefaultBrickType(level, row, col, cols, roll) {
+  let type = "basic";
+  if (roll > 0.9) type = "pulse";
+  else if (roll > 0.79) type = "explosive";
+  else if (roll > 0.64 || row === 0) type = "armor";
+  if (level % 3 === 0 && row === 1 && col === Math.floor(cols / 2)) {
+    type = "core";
+  }
+  return type;
+}
+
+function pickWaveBrickType(level, row, col, cols, rows, roll, profile) {
+  if (profile?.pickType) {
+    const picked = profile.pickType({ level, row, col, cols, rows, roll });
+    if (picked) return picked;
+  }
+  return pickDefaultBrickType(level, row, col, cols, roll);
+}
+
+function pulseScene(amount = 0.18) {
+  state.scenePulse = Math.min(1.6, state.scenePulse + amount);
+}
+
 class Synth {
   constructor() {
     this.ctx = null;
     this.master = null;
+    this.musicSource = null;
+    this.musicGain = null;
+    this.musicBuffers = {};
+    this.musicLevel = 0;
+    this.musicGen = 0;
   }
 
   ensure() {
@@ -93,8 +291,11 @@ class Synth {
       if (!AudioCtx) return;
       this.ctx = new AudioCtx();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.13;
+      this.master.gain.value = 0.38;
       this.master.connect(this.ctx.destination);
+      this.musicBus = this.ctx.createGain();
+      this.musicBus.gain.value = 0.045;
+      this.musicBus.connect(this.ctx.destination);
     }
     if (this.ctx.state === "suspended") {
       this.ctx.resume();
@@ -146,21 +347,44 @@ class Synth {
   }
 
   impact(intensity = 1) {
-    this.beep({ frequency: 280 + Math.random() * 140, duration: 0.08, type: "triangle", gain: 0.08 * intensity, slide: 1.3 });
+    const base = 280 + Math.random() * 120;
+    this.beep({ frequency: base, duration: 0.06, type: "triangle", gain: 0.07 * intensity, slide: 1.22 });
+    this.beep({ frequency: base * 1.56, duration: 0.04, type: "sine", gain: 0.028 * intensity, slide: 0.92 });
+    this.noise({ duration: 0.03 + intensity * 0.02, gain: 0.012 * intensity, highpass: 1100 });
   }
 
   brick(type) {
     const map = {
-      basic: [320, 0.12, "triangle"],
+      basic: [320, 0.1, "triangle"],
       armor: [180, 0.16, "square"],
       explosive: [230, 0.2, "sawtooth"],
-      pulse: [480, 0.11, "triangle"],
+      pulse: [480, 0.1, "triangle"],
       core: [130, 0.24, "sawtooth"],
     };
     const [frequency, duration, wave] = map[type];
-    this.beep({ frequency, duration, type: wave, gain: 0.11, slide: type === "pulse" ? 1.8 : 0.72 });
-    if (type === "explosive" || type === "core") {
-      this.noise({ duration: 0.12 + Math.random() * 0.06, gain: 0.06 });
+    const accents = {
+      basic: [frequency * 1.18, 0.05, "sine", 0.045],
+      armor: [frequency * 0.72, 0.08, "square", 0.04],
+      explosive: [frequency * 1.55, 0.08, "triangle", 0.058],
+      pulse: [frequency * 1.72, 0.06, "sine", 0.05],
+      core: [frequency * 2.1, 0.12, "triangle", 0.08],
+    };
+    const [accentFreq, accentDur, accentWave, accentGain] = accents[type];
+    this.beep({ frequency, duration, type: wave, gain: 0.11, slide: type === "pulse" ? 1.82 : 0.74 });
+    this.beep({
+      frequency: accentFreq,
+      duration: accentDur,
+      type: accentWave,
+      gain: accentGain,
+      slide: type === "armor" ? 0.94 : 1.16,
+    });
+    if (type === "armor") {
+      this.beep({ frequency: frequency * 2.2, duration: 0.04, type: "sine", gain: 0.025, slide: 0.96 });
+    } else if (type === "pulse") {
+      this.beep({ frequency: frequency * 2.0, duration: 0.05, type: "triangle", gain: 0.03, slide: 0.98 });
+    } else if (type === "explosive" || type === "core") {
+      this.noise({ duration: 0.12 + Math.random() * 0.06, gain: 0.06 + (type === "core" ? 0.04 : 0.02) });
+      this.beep({ frequency: frequency * 0.52, duration: 0.08, type: "sine", gain: 0.032, slide: 0.9 });
     }
   }
 
@@ -176,24 +400,117 @@ class Synth {
     const [frequency, duration] = tones[kind] || [520, 0.16];
     this.beep({ frequency, duration, type: "triangle", gain: 0.12, slide: 1.6 });
     this.beep({ frequency: frequency * 1.5, duration: duration * 0.8, type: "sine", gain: 0.06, slide: 0.9 });
+    if (kind === "life") {
+      this.beep({ frequency: frequency * 2, duration: duration * 0.6, type: "triangle", gain: 0.04, slide: 1.08 });
+    }
   }
 
   loss() {
-    this.beep({ frequency: 180, duration: 0.3, type: "sawtooth", gain: 0.12, slide: 0.48 });
-    this.noise({ duration: 0.18, gain: 0.08, highpass: 500 });
+    this.beep({ frequency: 180, duration: 0.3, type: "sawtooth", gain: 0.12, slide: 0.44 });
+    this.beep({ frequency: 110, duration: 0.22, type: "sine", gain: 0.04, slide: 0.72 });
+    this.noise({ duration: 0.2, gain: 0.08, highpass: 500 });
   }
 
   launch() {
-    this.beep({ frequency: 380, duration: 0.1, type: "square", gain: 0.08, slide: 1.6 });
+    this.beep({ frequency: 380, duration: 0.08, type: "square", gain: 0.08, slide: 1.68 });
+    this.beep({ frequency: 720, duration: 0.06, type: "triangle", gain: 0.035, slide: 0.9 });
+    this.noise({ duration: 0.035, gain: 0.01, highpass: 1500 });
   }
 
   overdrive() {
-    this.beep({ frequency: 280, duration: 0.16, type: "sawtooth", gain: 0.12, slide: 1.9 });
-    this.beep({ frequency: 560, duration: 0.24, type: "triangle", gain: 0.09, slide: 1.2 });
+    this.beep({ frequency: 280, duration: 0.15, type: "sawtooth", gain: 0.12, slide: 1.92 });
+    this.beep({ frequency: 560, duration: 0.22, type: "triangle", gain: 0.09, slide: 1.16 });
+    this.beep({ frequency: 840, duration: 0.18, type: "sine", gain: 0.04, slide: 0.94 });
+    this.noise({ duration: 0.08, gain: 0.025, highpass: 1000 });
   }
 
   hazard() {
-    this.beep({ frequency: 210, duration: 0.12, type: "square", gain: 0.08, slide: 0.8 });
+    this.beep({ frequency: 210, duration: 0.1, type: "square", gain: 0.08, slide: 0.78 });
+    this.beep({ frequency: 420, duration: 0.06, type: "triangle", gain: 0.035, slide: 0.94 });
+  }
+
+  waveRise(level, label) {
+    const base = 156 + level * 5;
+    this.beep({ frequency: base, duration: 0.18, type: "sawtooth", gain: 0.055, slide: 0.7 });
+    this.beep({ frequency: base * 1.88, duration: 0.16, type: "triangle", gain: 0.045, slide: 1.18 });
+    this.beep({ frequency: base * 2.66, duration: 0.08, type: "sine", gain: 0.022, slide: 0.96 });
+    if (label) {
+      this.beep({ frequency: 620, duration: 0.1, type: "sine", gain: 0.03, slide: 0.98 });
+    }
+  }
+
+  combo(combo) {
+    const base = 360 + Math.min(260, combo * 14);
+    this.beep({ frequency: base, duration: 0.08, type: "triangle", gain: 0.07, slide: 1.42 });
+    if (combo % 3 === 0) {
+      this.beep({ frequency: base * 1.5, duration: 0.11, type: "sine", gain: 0.045, slide: 0.88 });
+      this.noise({ duration: 0.03, gain: 0.01, highpass: 1600 });
+    }
+  }
+
+  finale() {
+    this.beep({ frequency: 240, duration: 0.14, type: "sawtooth", gain: 0.11, slide: 1.72 });
+    this.beep({ frequency: 480, duration: 0.22, type: "triangle", gain: 0.08, slide: 1.16 });
+    this.beep({ frequency: 96, duration: 0.3, type: "sine", gain: 0.035, slide: 0.88 });
+    this.noise({ duration: 0.1, gain: 0.035, highpass: 900 });
+  }
+
+  waveClear() {
+    this.beep({ frequency: 520, duration: 0.08, type: "triangle", gain: 0.08, slide: 1.18 });
+    this.beep({ frequency: 780, duration: 0.12, type: "sine", gain: 0.05, slide: 0.95 });
+  }
+
+  paddleHit(power = 1) {
+    const base = 360 + power * 42;
+    this.beep({ frequency: base, duration: 0.06, type: "triangle", gain: 0.08, slide: 1.16 });
+    this.beep({ frequency: base * 1.95, duration: 0.04, type: "sine", gain: 0.028, slide: 0.92 });
+  }
+
+  async loadMusic(level) {
+    if (!this.ctx || this.musicBuffers[level]) return this.musicBuffers[level];
+    try {
+      const res = await fetch(`assets/Level_${level}.mp3`);
+      if (!res.ok) return null;
+      const arrayBuf = await res.arrayBuffer();
+      this.musicBuffers[level] = await this.ctx.decodeAudioData(arrayBuf);
+      return this.musicBuffers[level];
+    } catch {
+      return null;
+    }
+  }
+
+  async playMusic(level) {
+    if (!this.ctx) return;
+    if (this.musicLevel === level && this.musicSource) return;
+    if (this.musicSource) {
+      try { this.musicSource.stop(); } catch {}
+      this.musicSource = null;
+      this.musicGain = null;
+    }
+    const gen = ++this.musicGen;
+    const buffer = await this.loadMusic(level);
+    if (!buffer || gen !== this.musicGen) { if (gen === this.musicGen) this.musicLevel = 0; return; }
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(1, this.ctx.currentTime + 0.5);
+    source.connect(gain);
+    gain.connect(this.musicBus);
+    source.start();
+    this.musicSource = source;
+    this.musicGain = gain;
+    this.musicLevel = level;
+  }
+
+  stopMusic() {
+    this.musicGen++;
+    if (!this.ctx || !this.musicSource) { this.musicLevel = 0; return; }
+    try { this.musicSource.stop(); } catch {}
+    this.musicSource = null;
+    this.musicGain = null;
+    this.musicLevel = 0;
   }
 }
 
@@ -207,6 +524,20 @@ function clampBallAngle(ball) {
     ball.vy = (ball.vy < 0 ? -1 : 1) * minVy;
     ball.vx = (ball.vx < 0 ? -1 : 1) * Math.sqrt(Math.max(0, speed * speed - ball.vy * ball.vy));
   }
+}
+
+function circleIntersectsRect(circleX, circleY, radius, rectX, rectY, rectWidth, rectHeight) {
+  const closestX = Math.max(rectX, Math.min(circleX, rectX + rectWidth));
+  const closestY = Math.max(rectY, Math.min(circleY, rectY + rectHeight));
+  const dx = circleX - closestX;
+  const dy = circleY - closestY;
+  return dx * dx + dy * dy <= radius * radius;
+}
+
+function moveToward(current, target, maxDelta) {
+  if (current < target) return Math.min(target, current + maxDelta);
+  if (current > target) return Math.max(target, current - maxDelta);
+  return target;
 }
 
 const GAME_W = 1280;
@@ -237,9 +568,11 @@ function resize() {
 
 function positionPaddle() {
   state.paddle.y = state.height - 64;
+  state.paddle.vx = 0;
   if (!state.paddle.x) {
     state.paddle.x = state.width / 2 - state.paddle.width / 2;
   }
+  state.pointerX = state.paddle.x + state.paddle.width / 2;
   const ball = state.balls[0];
   if (ball?.stuck) {
     ball.x = state.paddle.x + state.paddle.width / 2;
@@ -268,6 +601,7 @@ function resetRun(fullReset = false) {
   state.running = false;
   state.gameOver = false;
   if (fullReset) {
+    synth.stopMusic();
     state.score = 0;
     state.lives = 3;
     state.level = 1;
@@ -288,6 +622,7 @@ function resetRun(fullReset = false) {
     state.paddle.plasmaTimer = 0;
     state.finaleMode = false;
     state.finaleTriggered = false;
+    state.clock = 0;
   }
   state.shake = 0;
   state.flash = 0;
@@ -300,11 +635,12 @@ function resetRun(fullReset = false) {
 }
 
 function buildLevel(level) {
+  const profile = getLateWaveProfile(level);
   state.finaleMode = false;
   state.finaleTriggered = false;
   state.bricks = [];
-  const cols = Math.min(7 + level, 11);
-  const rows = Math.min(4 + Math.floor(level / 2), 7);
+  const cols = profile?.cols ?? Math.min(7 + level, 11);
+  const rows = profile?.rows ?? Math.min(4 + Math.floor(level / 2), 7);
   const gap = 10;
   const marginX = state.arena.marginX;
   const top = state.arena.top;
@@ -312,12 +648,21 @@ function buildLevel(level) {
   const brickWidth = Math.max(62, (usableWidth - gap * (cols - 1)) / cols);
   const brickHeight = 28;
   const patterns = ["waves", "spire", "rings"];
-  const pattern = patterns[(level - 1) % patterns.length];
+  const pattern = profile ? "late-game" : patterns[(level - 1) % patterns.length];
+  const waveLabel = profile?.name || null;
+  const driftChance = profile?.driftChance ?? 0.55;
+  const driftAmplitudeBoost = profile?.driftAmplitudeBoost ?? 1;
+  const driftSpeedBoost = profile?.driftSpeedBoost ?? 1;
+  const sweepSpeedBoost = profile?.sweepSpeedBoost ?? 1;
+  const speedScale = profile?.speedScale ?? 1 + Math.max(0, level - 6) * 0.14;
+  const sweepRows = profile?.sweepRows || ((row) => row % 2 === 1);
 
   for (let row = 0; row < rows; row += 1) {
     for (let col = 0; col < cols; col += 1) {
       let active = true;
-      if (pattern === "waves") {
+      if (profile) {
+        active = profile.layout({ level, row, col, cols, rows });
+      } else if (pattern === "waves") {
         active = (row + col) % 2 === 0 || row < 2;
       } else if (pattern === "spire") {
         const center = (cols - 1) / 2;
@@ -330,15 +675,8 @@ function buildLevel(level) {
       }
       if (!active) continue;
 
-      let type = "basic";
       const roll = Math.random();
-      if (roll > 0.9) type = "pulse";
-      else if (roll > 0.79) type = "explosive";
-      else if (roll > 0.64 || row === 0) type = "armor";
-
-      if (level % 3 === 0 && row === 1 && col === Math.floor(cols / 2)) {
-        type = "core";
-      }
+      const type = pickWaveBrickType(level, row, col, cols, rows, roll, profile);
 
       const bx = marginX + col * (brickWidth + gap);
       const def = brickTypes[type];
@@ -364,57 +702,68 @@ function buildLevel(level) {
 
   // Movement type progression:
   // L1=none, L2=drift, L3=sweep, L4=sentinel, L5=drift+sweep, L6+=all
-  const hasDrift    = level === 2 || level >= 5;
-  const hasSweep    = level === 3 || level >= 5;
-  const hasSentinel = level === 4 || level >= 6;
-  const speedScale  = 1 + Math.max(0, level - 6) * 0.14;
+  const hasDrift    = profile ? true : level === 2 || level >= 5;
+  const hasSweep    = profile ? true : level === 3 || level >= 5;
+  const hasSentinel = profile ? true : level === 4 || level >= 6;
 
   // Initialise per-row sweep state
   state.rowOffsets   = Array(rows).fill(0);
   state.rowVelocities = Array(rows).fill(0);
   if (hasSweep) {
-    for (let r = 1; r < rows; r += 2) {
-      const base = (52 + Math.random() * 68) * speedScale;
+    for (let r = 0; r < rows; r += 1) {
+      if (!sweepRows(r, rows)) continue;
+      const base = (52 + Math.random() * 68) * speedScale * sweepSpeedBoost;
       state.rowVelocities[r] = (Math.random() > 0.5 ? 1 : -1) * base;
     }
   }
 
   // Assign movement to each brick
   for (const brick of state.bricks) {
-    const rowSweeps = hasSweep && brick.row % 2 === 1;
+    const rowSweeps = hasSweep && sweepRows(brick.row, rows);
     if (hasSentinel && brick.type === "armor") {
       brick.moveType = "sentinel";
       brick.driftPhase = Math.random() * TAU;
-      brick.driftSpeed = (0.42 + Math.random() * 0.28) * speedScale;
+      brick.driftSpeed = (0.42 + Math.random() * 0.28) * speedScale * driftSpeedBoost;
       brick.driftAmplitude = 62 + Math.random() * 58;
     } else if (rowSweeps) {
       brick.moveType = "sweep";
-    } else if (hasDrift && (brick.type === "basic" || brick.type === "pulse") && Math.random() < 0.55) {
+    } else if (hasDrift && (brick.type === "basic" || brick.type === "pulse") && Math.random() < driftChance) {
       brick.moveType = "drift";
       brick.driftPhase = Math.random() * TAU;
-      brick.driftSpeed = (0.5 + Math.random() * 0.9) * speedScale;
-      brick.driftAmplitude = 26 + Math.random() * 54;
+      brick.driftSpeed = (0.5 + Math.random() * 0.9) * speedScale * driftSpeedBoost;
+      brick.driftAmplitude = (26 + Math.random() * 54) * driftAmplitudeBoost;
     }
   }
 
-  setMessage(`Wave ${level} entering the arena`, 2.4);
+  setMessage(
+    waveLabel ? `Wave ${level} — ${waveLabel} entering the arena` : `Wave ${level} entering the arena`,
+    2.4,
+  );
+  pulseScene(profile ? 0.9 : 0.6);
+  if (state.audioReady) {
+    synth.waveRise(level, waveLabel);
+    synth.playMusic(level);
+  }
 }
 
 function jumpToLevel(level) {
   if (!state.audioReady) { synth.ensure(); state.audioReady = true; }
   resetRun(true);
+  synth.stopMusic();
   state.level = level;
   buildLevel(level);
   positionPaddle();
   resetBall();
   syncHud();
   hud.overlay.classList.remove("visible");
-  setMessage(`DEV — Wave ${level}`, 2.5);
+  const profile = getLateWaveProfile(level);
+  setMessage(profile ? `DEV — Wave ${level} · ${profile.name}` : `DEV — Wave ${level}`, 2.5);
 }
 
 function startGame() {
   synth.ensure();
   state.audioReady = true;
+
   overlayTitle.textContent = defaultOverlayTitle;
   overlayBody.textContent = defaultOverlayBody;
   hud.startButton.textContent = "Start Siege";
@@ -435,6 +784,7 @@ function launchBall() {
   }
   state.running = true;
   synth.launch();
+  pulseScene(0.12);
 }
 
 function activateOverdrive() {
@@ -443,6 +793,7 @@ function activateOverdrive() {
   state.paddle.plasmaTimer = Math.max(state.paddle.plasmaTimer, 10);
   state.flash = 0.7;
   state.shake = Math.max(state.shake, 16);
+  pulseScene(0.95);
   addFloatingText(state.width / 2, state.height * 0.56, "OVERDRIVE", "#ffd166", 1.6);
   setMessage("Overdrive engaged: plasma ball cuts through the grid", 2.6);
   synth.overdrive();
@@ -461,8 +812,11 @@ function addFloatingText(x, y, text, color = "#ffffff", size = 1) {
 function awardScore(points, x, y) {
   const total = Math.round(points * state.combo * (state.overdriveTimer > 0 ? 1.4 : 1));
   state.score += total;
-  state.overdrive = Math.min(100, state.overdrive + total * 0.005);
+  state.overdrive = Math.min(100, state.overdrive + total * 0.01);
   addFloatingText(x, y, `+${total}`, "#f5f4ef", 1);
+  if (state.combo > 1 && (state.combo % 4 === 0 || total >= 500)) {
+    synth.combo(state.combo);
+  }
   if (state.overdrive >= 100 && state.overdriveTimer <= 0) {
     activateOverdrive();
   }
@@ -549,6 +903,7 @@ function applyPickup(kind) {
   const bd = bannerDefs[kind];
   if (bd) state.powerupBanner = { ...bd, timer: 2.4, maxTimer: 2.4 };
 
+  pulseScene(0.22);
   spawnParticles(state.paddle.x + state.paddle.width / 2, state.paddle.y, "#ffd166", 18, 300);
   synth.pickup(kind);
 }
@@ -573,6 +928,7 @@ function loseLife() {
   state.running = false;
   state.flash = 0.75;
   state.shake = 24;
+  pulseScene(0.32);
   spawnParticles(state.width / 2, state.height - 60, "#ff7a45", 26, 340);
   synth.loss();
 
@@ -595,6 +951,7 @@ function destroyBrick(brick, ball) {
   state.comboTimer = 2.8;
   state.flash = Math.min(0.5, state.flash + (brick.type === "core" ? 0.28 : 0.08));
   state.shake = Math.max(state.shake, brick.type === "core" ? 18 : brick.type === "explosive" ? 12 : 6);
+  pulseScene(brick.type === "core" ? 0.22 : brick.type === "explosive" ? 0.14 : 0.06);
   awardScore(brickTypes[brick.type].score, brick.x + brick.width / 2, brick.y + brick.height / 2);
   spawnParticles(brick.x + brick.width / 2, brick.y + brick.height / 2, brickTypes[brick.type].color, brick.type === "core" ? 34 : 16);
   synth.brick(brick.type);
@@ -621,6 +978,7 @@ function destroyBrick(brick, ball) {
     state.level += 1;
     state.running = false;
     setMessage("Wave erased. Warping next assault pattern.", 2.4);
+    synth.waveClear();
     state.paddle.width = Math.max(state.paddle.baseWidth, state.paddle.width * 0.96);
     state.pendingWaveTimer = window.setTimeout(() => {
       buildLevel(state.level);
@@ -699,13 +1057,31 @@ function syncHud() {
 }
 
 function updatePaddle(dt) {
-  if (state.keyboard.left) state.paddle.x -= state.paddle.speed * dt;
-  if (state.keyboard.right) state.paddle.x += state.paddle.speed * dt;
+  if (state.inputMode === "pointer" && state.pointerActive) {
+    const targetX = state.pointerX - state.paddle.width / 2;
+    const smoothing = 12;
+    const alpha = 1 - Math.exp(-smoothing * dt);
+    const prevX = state.paddle.x;
+    state.paddle.x += (targetX - state.paddle.x) * alpha;
+    state.paddle.vx = (state.paddle.x - prevX) / dt;
+  } else {
+    const input = (state.keyboard.right ? 1 : 0) - (state.keyboard.left ? 1 : 0);
+    const targetVelocity = input * state.paddle.speed;
+    const response = input === 0 ? state.paddle.brake : state.paddle.acceleration;
+    state.paddle.vx = moveToward(state.paddle.vx, targetVelocity, response * dt);
+    if (input === 0 && Math.abs(state.paddle.vx) < 8) state.paddle.vx = 0;
+    state.paddle.x += state.paddle.vx * dt;
+  }
 
+  const minX = state.arena.marginX * 0.45;
+  const maxX = state.width - state.paddle.width - state.arena.marginX * 0.45;
   state.paddle.x = Math.max(
-    state.arena.marginX * 0.45,
-    Math.min(state.width - state.paddle.width - state.arena.marginX * 0.45, state.paddle.x),
+    minX,
+    Math.min(maxX, state.paddle.x),
   );
+  if ((state.paddle.x === minX && state.paddle.vx < 0) || (state.paddle.x === maxX && state.paddle.vx > 0)) {
+    state.paddle.vx = 0;
+  }
 
   if (state.paddle.glow > 0) state.paddle.glow = Math.max(0, state.paddle.glow - dt * 3);
   if (state.paddle.shieldTimer > 0) state.paddle.shieldTimer -= dt;
@@ -800,7 +1176,7 @@ function updateBalls(dt) {
 }
 
 function updateHazards(dt) {
-  if (Math.random() < 0.003 * state.level && state.bricks.some((brick) => brick.alive && brick.type !== "core")) {
+  if (Math.random() < 0.0015 * state.level && state.bricks.some((brick) => brick.alive && brick.type !== "core")) {
     const launchers = state.bricks.filter((brick) => brick.alive && (brick.type === "armor" || brick.type === "pulse"));
     if (launchers.length) {
       const brick = launchers[Math.floor(Math.random() * launchers.length)];
@@ -822,9 +1198,15 @@ function updateHazards(dt) {
     hazard.y += hazard.vy * dt * (state.slowTimer > 0 ? 0.55 : 1);
     hazard.life -= dt;
     if (
-      hazard.y + hazard.radius >= state.paddle.y &&
-      hazard.x >= state.paddle.x - 10 &&
-      hazard.x <= state.paddle.x + state.paddle.width + 10
+      circleIntersectsRect(
+        hazard.x,
+        hazard.y,
+        hazard.radius,
+        state.paddle.x,
+        state.paddle.y,
+        state.paddle.width,
+        state.paddle.height,
+      )
     ) {
       if (state.paddle.shieldTimer > 0) {
         hazard.life = 0;
@@ -862,6 +1244,9 @@ function updatePickups(dt) {
 }
 
 function updateFx(dt) {
+  state.clock += dt;
+  state.scenePulse = Math.max(0, state.scenePulse - dt * 0.45);
+
   for (const particle of state.particles) {
     particle.x += particle.vx * dt;
     particle.y += particle.vy * dt;
@@ -942,7 +1327,7 @@ function updateFx(dt) {
     state.shake = Math.max(state.shake, 14);
     addFloatingText(state.width / 2, state.height * 0.52, 'SIEGE FINALE', '#ff4f9f', 1.8);
     setMessage('Siege Finale — no escape for the last stronghold', 3.0);
-    synth.overdrive();
+    synth.finale();
   }
 
   syncHud();
@@ -1003,7 +1388,7 @@ function drawBackground() {
   const gradient = ctx.createLinearGradient(0, 0, 0, state.height);
   gradient.addColorStop(0, "#15112a");
   gradient.addColorStop(0.5, "#0a1f28");
-  gradient.addColorStop(1, "#071018");
+  gradient.addColorStop(1, "#061018");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, state.width, state.height);
 
@@ -1037,16 +1422,6 @@ function drawBackground() {
 function drawBricks() {
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
-    if (state.finaleMode) {
-      const finaleGlow = 28 + Math.sin(Date.now() * 0.018) * 14;
-      ctx.save();
-      ctx.shadowBlur = finaleGlow;
-      ctx.shadowColor = '#ff2a6d';
-      ctx.strokeStyle = '#ff2a6d';
-      ctx.lineWidth = 3;
-      roundRect(brick.x - 3, brick.y - 3, brick.width + 6, brick.height + 6, 10, true);
-      ctx.restore();
-    }
     const def = brickTypes[brick.type];
     const pulseGlow = 12 + Math.sin(brick.pulse) * 4;
     ctx.save();
@@ -1104,11 +1479,17 @@ function drawBalls() {
 
     const glow = state.paddle.plasmaTimer > 0 ? "#ffd166" : "#ffffff";
     ctx.save();
-    ctx.shadowBlur = 24;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowBlur = 24 + ball.energy * 18 + state.scenePulse * 4;
     ctx.shadowColor = glow;
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.radius, 0, TAU);
+    ctx.arc(ball.x, ball.y, ball.radius + ball.energy * 0.9, 0, TAU);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = state.paddle.plasmaTimer > 0 ? "rgba(255, 238, 187, 0.96)" : "rgba(245, 244, 239, 0.96)";
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, Math.max(4, ball.radius - 3), 0, TAU);
     ctx.fill();
     ctx.restore();
   }
@@ -1160,12 +1541,21 @@ function drawHazards() {
     if (warningAlpha > 0) {
       hazard.spawnGlow = Math.max(0, warningAlpha - 0.04);
     }
+    ctx.globalCompositeOperation = "lighter";
     ctx.shadowBlur = 18 + warningAlpha * 24;
     ctx.shadowColor = '#ff4f9f';
     ctx.fillStyle = '#ff4f9f';
     ctx.beginPath();
     ctx.arc(hazard.x, hazard.y, hazard.radius, 0, TAU);
     ctx.fill();
+    ctx.strokeStyle = `rgba(255, 95, 207, ${0.6 + warningAlpha * 0.3})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hazard.x - hazard.radius * 1.8, hazard.y);
+    ctx.lineTo(hazard.x + hazard.radius * 1.8, hazard.y);
+    ctx.moveTo(hazard.x, hazard.y - hazard.radius * 1.8);
+    ctx.lineTo(hazard.x, hazard.y + hazard.radius * 1.8);
+    ctx.stroke();
     // Inner bright core
     ctx.shadowBlur = 6;
     ctx.fillStyle = `rgba(255, 200, 220, ${0.6 + warningAlpha * 0.4})`;
@@ -1177,11 +1567,22 @@ function drawHazards() {
 }
 
 function drawParticles() {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
   for (const particle of state.particles) {
     const alpha = 1 - particle.age / particle.life;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = particle.color;
     ctx.fillStyle = hexToRgba(particle.color, alpha);
-    ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+    if (particle.size > 4) {
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * 0.45, 0, TAU);
+      ctx.fill();
+    } else {
+      ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+    }
   }
+  ctx.restore();
 }
 
 function drawTexts() {
@@ -1268,6 +1669,71 @@ function drawPowerupBanner() {
   ctx.restore();
 }
 
+function drawCinematicOverlay() {
+  const t = performance.now() * 0.001;
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha =
+    0.18 +
+    (state.overdriveTimer > 0 ? 0.1 : 0) +
+    (state.finaleMode ? 0.08 : 0) +
+    state.scenePulse * 0.06;
+
+  const leftGlow = ctx.createRadialGradient(
+    state.width * 0.18,
+    state.height * 0.18,
+    0,
+    state.width * 0.18,
+    state.height * 0.18,
+    260,
+  );
+  leftGlow.addColorStop(0, state.finaleMode ? "rgba(255, 42, 109, 0.16)" : "rgba(255, 122, 69, 0.14)");
+  leftGlow.addColorStop(0.5, "rgba(255, 122, 69, 0.04)");
+  leftGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = leftGlow;
+  ctx.fillRect(0, 0, state.width, state.height);
+
+  const rightGlow = ctx.createRadialGradient(
+    state.width * 0.84,
+    state.height * 0.24,
+    0,
+    state.width * 0.84,
+    state.height * 0.24,
+    340,
+  );
+  rightGlow.addColorStop(0, "rgba(117, 240, 255, 0.12)");
+  rightGlow.addColorStop(0.55, "rgba(117, 240, 255, 0.035)");
+  rightGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = rightGlow;
+  ctx.fillRect(0, 0, state.width, state.height);
+
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 0.1;
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  for (let y = (t * 28) % 4; y < state.height; y += 4) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(state.width, y);
+    ctx.stroke();
+  }
+
+  ctx.globalAlpha = 1;
+  const vignette = ctx.createRadialGradient(
+    state.width / 2,
+    state.height / 2,
+    Math.min(state.width, state.height) * 0.18,
+    state.width / 2,
+    state.height / 2,
+    Math.max(state.width, state.height) * 0.72,
+  );
+  vignette.addColorStop(0, "rgba(0, 0, 0, 0)");
+  vignette.addColorStop(0.78, "rgba(0, 0, 0, 0.08)");
+  vignette.addColorStop(1, "rgba(0, 0, 0, 0.42)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, state.width, state.height);
+  ctx.restore();
+}
+
 function drawArena() {
   ctx.save();
   if (state.shake > 0) {
@@ -1295,6 +1761,7 @@ function drawArena() {
     ctx.fillRect(0, 0, state.width, state.height);
   }
   drawPowerupBanner();
+  drawCinematicOverlay();
 }
 
 function roundRect(x, y, width, height, radius, stroke = false) {
@@ -1336,8 +1803,18 @@ function attachEvents() {
   window.addEventListener("resize", resize);
 
   window.addEventListener("keydown", (event) => {
-    if (event.code === "ArrowLeft" || event.code === "KeyA") state.keyboard.left = true;
-    if (event.code === "ArrowRight" || event.code === "KeyD") state.keyboard.right = true;
+    if (event.code === "ArrowLeft" || event.code === "KeyA") {
+      event.preventDefault();
+      state.keyboard.left = true;
+      state.inputMode = "keyboard";
+      state.pointerActive = false;
+    }
+    if (event.code === "ArrowRight" || event.code === "KeyD") {
+      event.preventDefault();
+      state.keyboard.right = true;
+      state.inputMode = "keyboard";
+      state.pointerActive = false;
+    }
     if (event.code === "Space") {
       event.preventDefault();
       if (!state.audioReady) synth.ensure();
@@ -1366,8 +1843,14 @@ function attachEvents() {
   });
 
   window.addEventListener("keyup", (event) => {
-    if (event.code === "ArrowLeft" || event.code === "KeyA") state.keyboard.left = false;
-    if (event.code === "ArrowRight" || event.code === "KeyD") state.keyboard.right = false;
+    if (event.code === "ArrowLeft" || event.code === "KeyA") {
+      event.preventDefault();
+      state.keyboard.left = false;
+    }
+    if (event.code === "ArrowRight" || event.code === "KeyD") {
+      event.preventDefault();
+      state.keyboard.right = false;
+    }
   });
 
   canvas.addEventListener("pointerdown", () => {
@@ -1377,6 +1860,14 @@ function attachEvents() {
     }
     if (hud.overlay.classList.contains("visible")) return;
     launchBall();
+  });
+
+  canvas.addEventListener("pointermove", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = GAME_W / rect.width;
+    state.pointerX = (event.clientX - rect.left) * scaleX;
+    state.inputMode = "pointer";
+    state.pointerActive = true;
   });
 
   hud.startButton.addEventListener("click", startGame);
