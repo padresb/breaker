@@ -18,6 +18,16 @@ const defaultOverlayTitle = overlayTitle.textContent;
 const defaultOverlayBody = overlayBody.textContent;
 
 const TAU = Math.PI * 2;
+const STARTING_LIVES = 6;
+const CONTACT_LINK_MARGIN = 10;
+const DEV_SHORTCUTS = [
+  "Ctrl+Shift+1-9: jump to wave 1-9",
+  "Ctrl+Shift+0: jump to wave 10",
+  "Ctrl+L: add 1 life",
+];
+
+console.info(`Developer shortcuts:\n${DEV_SHORTCUTS.map((shortcut) => `- ${shortcut}`).join("\n")}`);
+
 const brickTypes = {
   basic: { hp: 1, score: 100, color: "#55efff" },
   armor: { hp: 2, score: 220, color: "#ffb347" },
@@ -191,7 +201,7 @@ const state = {
   running: false,
   gameOver: false,
   score: 0,
-  lives: 3,
+  lives: STARTING_LIVES,
   level: 1,
   combo: 1,
   comboTimer: 0,
@@ -217,6 +227,7 @@ const state = {
   floatingTexts: [],
   pickups: [],
   hazards: [],
+  laserBolts: [],
   rowOffsets: [],
   rowVelocities: [],
   stars: [],
@@ -237,6 +248,10 @@ const state = {
     shieldTimer: 0,
     multiballTimer: 0,
     plasmaTimer: 0,
+    laserTimer: 0,
+    laserCooldown: 0,
+    blastTimer: 0,
+    contactTimer: 0,
   },
   balls: [],
   bricks: [],
@@ -396,6 +411,9 @@ class Synth {
       shield: [560, 0.18],
       plasma: [740, 0.2],
       life: [820, 0.22],
+      laser: [900, 0.16],
+      blast: [260, 0.22],
+      contact: [620, 0.2],
     };
     const [frequency, duration] = tones[kind] || [520, 0.16];
     this.beep({ frequency, duration, type: "triangle", gain: 0.12, slide: 1.6 });
@@ -603,13 +621,14 @@ function resetRun(fullReset = false) {
   if (fullReset) {
     synth.stopMusic();
     state.score = 0;
-    state.lives = 3;
+    state.lives = STARTING_LIVES;
     state.level = 1;
     state.combo = 1;
     state.overdrive = 0;
     state.comboTimer = 0;
     state.overdriveTimer = 0;
     state.hazards = [];
+    state.laserBolts = [];
     state.pickups = [];
     state.particles = [];
     state.floatingTexts = [];
@@ -620,6 +639,10 @@ function resetRun(fullReset = false) {
     state.paddle.shieldTimer = 0;
     state.paddle.multiballTimer = 0;
     state.paddle.plasmaTimer = 0;
+    state.paddle.laserTimer = 0;
+    state.paddle.laserCooldown = 0;
+    state.paddle.blastTimer = 0;
+    state.paddle.contactTimer = 0;
     state.finaleMode = false;
     state.finaleTriggered = false;
     state.clock = 0;
@@ -760,6 +783,12 @@ function jumpToLevel(level) {
   setMessage(profile ? `DEV — Wave ${level} · ${profile.name}` : `DEV — Wave ${level}`, 2.5);
 }
 
+function addDevLife() {
+  state.lives += 1;
+  syncHud();
+  setMessage(`DEV — Extra life added (${state.lives})`, 1.6);
+}
+
 function startGame() {
   synth.ensure();
   state.audioReady = true;
@@ -785,6 +814,30 @@ function launchBall() {
   state.running = true;
   synth.launch();
   pulseScene(0.12);
+}
+
+function fireLaserBolts() {
+  if (state.paddle.laserTimer <= 0 || state.paddle.laserCooldown > 0 || hud.overlay.classList.contains("visible")) {
+    return false;
+  }
+
+  const leftX = state.paddle.x + Math.max(18, state.paddle.width * 0.22);
+  const rightX = state.paddle.x + Math.min(state.paddle.width - 18, state.paddle.width * 0.78);
+  for (const x of [leftX, rightX]) {
+    state.laserBolts.push({
+      x,
+      y: state.paddle.y - 8,
+      vy: -860,
+      width: 5,
+      height: 24,
+      life: 1.1,
+    });
+  }
+  state.paddle.laserCooldown = 0.18;
+  state.paddle.glow = 1;
+  pulseScene(0.08);
+  synth.beep({ frequency: 880, duration: 0.045, type: "square", gain: 0.05, slide: 1.22 });
+  return true;
 }
 
 function activateOverdrive() {
@@ -840,7 +893,7 @@ function spawnParticles(x, y, color, count = 14, speed = 260) {
 }
 
 function dropPickup(x, y) {
-  const kinds = ["widen", "multiball", "slow", "shield", "plasma", "life"];
+  const kinds = ["widen", "multiball", "slow", "shield", "plasma", "life", "laser", "blast", "contact"];
   const kind = kinds[Math.floor(Math.random() * kinds.length)];
   state.pickups.push({
     x,
@@ -891,6 +944,15 @@ function applyPickup(kind) {
   } else if (kind === "life") {
     state.lives += 1;
     setMessage("Extra interceptor granted", 1.8);
+  } else if (kind === "laser") {
+    state.paddle.laserTimer = Math.max(state.paddle.laserTimer, 12);
+    setMessage("Laser battery armed: Space fires bolts", 2);
+  } else if (kind === "blast") {
+    state.paddle.blastTimer = Math.max(state.paddle.blastTimer, 10);
+    setMessage("Blast rounds armed: hits erase nearby bricks", 2);
+  } else if (kind === "contact") {
+    state.paddle.contactTimer = Math.max(state.paddle.contactTimer, 10);
+    setMessage("Contact breach armed: linked bricks collapse", 2);
   }
   const bannerDefs = {
     widen:     { name: "FUSION BAT",      desc: "Paddle width expanded",        color: "#75f0ff", letter: "W" },
@@ -899,6 +961,9 @@ function applyPickup(kind) {
     shield:    { name: "REFLEC SHIELD",   desc: "Next hit absorbed",             color: "#9ee5ff", letter: "B" },
     plasma:    { name: "PLASMA LANE",     desc: "Ball pierces bricks (x2 dmg)",  color: "#ffd166", letter: "P" },
     life:      { name: "EXTRA LIFE",      desc: "+1 interceptor granted",        color: "#ff7a45", letter: "+" },
+    laser:     { name: "LASER BATTERY",   desc: "Space fires twin bolts",        color: "#ff4f9f", letter: "L" },
+    blast:     { name: "BLAST ROUNDS",    desc: "Ball hits destroy neighbors",   color: "#ffb347", letter: "X" },
+    contact:   { name: "CONTACT BREACH",  desc: "Touching bricks collapse",      color: "#a892ff", letter: "C" },
   };
   const bd = bannerDefs[kind];
   if (bd) state.powerupBanner = { ...bd, timer: 2.4, maxTimer: 2.4 };
@@ -913,6 +978,7 @@ function loseLife() {
     state.paddle.shieldTimer = 0;
     state.running = false;
     state.hazards = [];
+    state.laserBolts = [];
     state.flash = 0.5;
     state.shake = 14;
     setMessage("Shield spent: hull integrity preserved", 2);
@@ -926,6 +992,7 @@ function loseLife() {
   state.comboTimer = 0;
   state.overdrive = Math.max(0, state.overdrive - 35);
   state.running = false;
+  state.laserBolts = [];
   state.flash = 0.75;
   state.shake = 24;
   pulseScene(0.32);
@@ -945,7 +1012,26 @@ function loseLife() {
   }
 }
 
-function destroyBrick(brick, ball) {
+function finishWaveIfCleared() {
+  if (state.pendingWaveTimer || state.bricks.some((candidate) => candidate.alive)) return;
+
+  state.level += 1;
+  state.running = false;
+  state.laserBolts = [];
+  setMessage("Wave erased. Warping next assault pattern.", 2.4);
+  synth.waveClear();
+  state.paddle.width = Math.max(state.paddle.baseWidth, state.paddle.width * 0.96);
+  state.pendingWaveTimer = window.setTimeout(() => {
+    buildLevel(state.level);
+    resetBall();
+    state.pendingWaveTimer = 0;
+    syncHud();
+  }, 650);
+}
+
+function destroyBrick(brick, ball, options = {}) {
+  if (!brick.alive) return;
+
   brick.alive = false;
   state.combo += 1;
   state.comboTimer = 2.8;
@@ -958,15 +1044,17 @@ function destroyBrick(brick, ball) {
   if (brick.type === 'core') state.hitStopTimer = 0.09;
   else if (brick.type === 'explosive') state.hitStopTimer = 0.05;
 
-  if (brick.type === "explosive") {
-    explodeAround(brick);
-  } else if (brick.type === "pulse") {
-    repelHazards(brick.x + brick.width / 2, brick.y + brick.height / 2);
-  } else if (brick.type === "core") {
-    unleashCoreVolley(brick);
+  if (!options.skipBrickEffects) {
+    if (brick.type === "explosive") {
+      explodeAround(brick);
+    } else if (brick.type === "pulse") {
+      repelHazards(brick.x + brick.width / 2, brick.y + brick.height / 2);
+    } else if (brick.type === "core") {
+      unleashCoreVolley(brick);
+    }
   }
 
-  if (Math.random() < 0.18 || brick.type === "core") {
+  if (!options.skipPickup && (Math.random() < 0.18 || brick.type === "core")) {
     dropPickup(brick.x + brick.width / 2, brick.y + brick.height / 2);
   }
 
@@ -974,19 +1062,7 @@ function destroyBrick(brick, ball) {
     ball.energy = Math.min(1, ball.energy + 0.2);
   }
 
-  if (state.bricks.every((candidate) => !candidate.alive)) {
-    state.level += 1;
-    state.running = false;
-    setMessage("Wave erased. Warping next assault pattern.", 2.4);
-    synth.waveClear();
-    state.paddle.width = Math.max(state.paddle.baseWidth, state.paddle.width * 0.96);
-    state.pendingWaveTimer = window.setTimeout(() => {
-      buildLevel(state.level);
-      resetBall();
-      state.pendingWaveTimer = 0;
-      syncHud();
-    }, 650);
-  }
+  finishWaveIfCleared();
 }
 
 function explodeAround(source) {
@@ -1002,6 +1078,70 @@ function explodeAround(source) {
       if (brick.hp <= 0) destroyBrick(brick);
     }
   }
+}
+
+function destroyNearbyBricks(source, ball) {
+  const cx = source.x + source.width / 2;
+  const cy = source.y + source.height / 2;
+  let destroyed = 0;
+
+  for (const brick of state.bricks) {
+    if (!brick.alive || brick === source) continue;
+    const bx = brick.x + brick.width / 2;
+    const by = brick.y + brick.height / 2;
+    if (Math.hypot(cx - bx, cy - by) < 112) {
+      destroyBrick(brick, ball, { skipBrickEffects: true, skipPickup: true });
+      destroyed += 1;
+    }
+  }
+
+  if (destroyed > 0) {
+    state.flash = Math.max(state.flash, 0.45);
+    state.shake = Math.max(state.shake, 18);
+    pulseScene(0.34);
+    setMessage(`Blast rounds erased ${destroyed} nearby ${destroyed === 1 ? "brick" : "bricks"}`, 1.8);
+  }
+}
+
+function rectsTouchOrOverlap(a, b) {
+  return (
+    a.x <= b.x + b.width + CONTACT_LINK_MARGIN &&
+    a.x + a.width + CONTACT_LINK_MARGIN >= b.x &&
+    a.y <= b.y + b.height + CONTACT_LINK_MARGIN &&
+    a.y + a.height + CONTACT_LINK_MARGIN >= b.y
+  );
+}
+
+function destroyTouchingBricks(source, ball) {
+  let destroyed = 0;
+
+  for (const brick of state.bricks) {
+    if (!brick.alive || brick === source) continue;
+    if (rectsTouchOrOverlap(source, brick)) {
+      destroyBrick(brick, ball, { skipBrickEffects: true, skipPickup: true });
+      destroyed += 1;
+    }
+  }
+
+  if (destroyed > 0) {
+    state.flash = Math.max(state.flash, 0.35);
+    state.shake = Math.max(state.shake, 12);
+    pulseScene(0.26);
+    setMessage(`Contact breach collapsed ${destroyed} linked ${destroyed === 1 ? "brick" : "bricks"}`, 1.8);
+  }
+}
+
+function triggerBallHitPowerups(brick, ball) {
+  const blastActive = state.paddle.blastTimer > 0;
+  const contactActive = state.paddle.contactTimer > 0;
+
+  if (!blastActive && !contactActive) return false;
+
+  destroyBrick(brick, ball);
+  if (blastActive) destroyNearbyBricks(brick, ball);
+  if (contactActive) destroyTouchingBricks(brick, ball);
+  finishWaveIfCleared();
+  return true;
 }
 
 function repelHazards(x, y) {
@@ -1087,6 +1227,10 @@ function updatePaddle(dt) {
   if (state.paddle.shieldTimer > 0) state.paddle.shieldTimer -= dt;
   if (state.paddle.multiballTimer > 0) state.paddle.multiballTimer -= dt;
   if (state.paddle.plasmaTimer > 0) state.paddle.plasmaTimer -= dt;
+  if (state.paddle.laserTimer > 0) state.paddle.laserTimer -= dt;
+  if (state.paddle.laserCooldown > 0) state.paddle.laserCooldown -= dt;
+  if (state.paddle.blastTimer > 0) state.paddle.blastTimer -= dt;
+  if (state.paddle.contactTimer > 0) state.paddle.contactTimer -= dt;
 
   for (const ball of state.balls) {
     if (ball.stuck) {
@@ -1158,6 +1302,9 @@ function updateBalls(dt) {
           else if (minOverlap === overlapTop) ball.vy = -Math.abs(ball.vy);
           else ball.vy = Math.abs(ball.vy);
         }
+        if (triggerBallHitPowerups(brick, ball)) {
+          break;
+        }
         if (brick.hp <= 0) destroyBrick(brick, ball);
         else {
           brick.hitGlow = 1;
@@ -1173,6 +1320,37 @@ function updateBalls(dt) {
   if (!state.balls.length) {
     loseLife();
   }
+}
+
+function updateLaserBolts(dt) {
+  for (const bolt of state.laserBolts) {
+    bolt.y += bolt.vy * dt;
+    bolt.life -= dt;
+
+    for (const brick of state.bricks) {
+      if (!brick.alive) continue;
+      if (
+        bolt.x + bolt.width / 2 > brick.x &&
+        bolt.x - bolt.width / 2 < brick.x + brick.width &&
+        bolt.y + bolt.height / 2 > brick.y &&
+        bolt.y - bolt.height / 2 < brick.y + brick.height
+      ) {
+        brick.hp -= 1;
+        brick.hitGlow = 1;
+        bolt.dead = true;
+        spawnParticles(bolt.x, bolt.y, "#ff4f9f", 8, 220);
+        if (brick.hp <= 0) {
+          destroyBrick(brick, null);
+        } else {
+          awardScore(25, brick.x + brick.width / 2, brick.y + brick.height / 2);
+          synth.impact(0.65);
+        }
+        break;
+      }
+    }
+  }
+
+  state.laserBolts = state.laserBolts.filter((bolt) => !bolt.dead && bolt.life > 0 && bolt.y > 20);
 }
 
 function updateHazards(dt) {
@@ -1378,6 +1556,7 @@ function update(dt) {
   updateBricks(dt);
   if (state.running) {
     updateBalls(dt);
+    updateLaserBolts(dt);
     updateHazards(dt);
     updatePickups(dt);
   }
@@ -1495,6 +1674,22 @@ function drawBalls() {
   }
 }
 
+function drawLaserBolts() {
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const bolt of state.laserBolts) {
+    ctx.globalAlpha = Math.max(0.2, Math.min(1, bolt.life / 0.18));
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = "#ff4f9f";
+    ctx.fillStyle = "#ff4f9f";
+    roundRect(bolt.x - bolt.width / 2, bolt.y - bolt.height / 2, bolt.width, bolt.height, 3);
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = "#ffd6ea";
+    roundRect(bolt.x - 1, bolt.y - bolt.height / 2 + 2, 2, bolt.height - 4, 1);
+  }
+  ctx.restore();
+}
+
 function drawPickups() {
   const colors = {
     widen: "#75f0ff",
@@ -1503,6 +1698,9 @@ function drawPickups() {
     shield: "#9ee5ff",
     plasma: "#ffd166",
     life: "#ff7a45",
+    laser: "#ff4f9f",
+    blast: "#ffb347",
+    contact: "#a892ff",
   };
   const labels = {
     widen: "W",
@@ -1511,6 +1709,9 @@ function drawPickups() {
     shield: "B",
     plasma: "P",
     life: "+",
+    laser: "L",
+    blast: "X",
+    contact: "C",
   };
 
   for (const pickup of state.pickups) {
@@ -1743,6 +1944,7 @@ function drawArena() {
   drawBricks();
   drawPaddle();
   drawBalls();
+  drawLaserBolts();
   drawPickups();
   drawHazards();
   drawParticles();
@@ -1822,7 +2024,9 @@ function attachEvents() {
         startGame();
       } else if (hud.overlay.classList.contains("visible")) {
         startGame();
-      } else {
+      } else if (state.balls.some((ball) => ball.stuck)) {
+        launchBall();
+      } else if (!fireLaserBolts()) {
         launchBall();
       }
     }
@@ -1830,6 +2034,10 @@ function attachEvents() {
       event.preventDefault();
       const digit = parseInt(event.code.replace("Digit", ""), 10);
       jumpToLevel(digit === 0 ? 10 : digit);
+    }
+    if (event.ctrlKey && !event.shiftKey && event.code === "KeyL") {
+      event.preventDefault();
+      addDevLife();
     }
     if (event.code === "Escape") {
       event.preventDefault();

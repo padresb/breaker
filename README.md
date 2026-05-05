@@ -5,7 +5,7 @@ A browser-based AAA-style brick-breaking arcade game. No build step, no dependen
 ## Running
 
 ```bash
-python3 -m http.server 4173
+python3 server.py
 # then open http://localhost:4173
 ```
 
@@ -15,10 +15,11 @@ python3 -m http.server 4173
 |---|---|
 | `A` / `←` | Move paddle left |
 | `D` / `→` | Move paddle right |
-| `Space` | Launch ball / start game |
+| `Space` | Launch ball / start game / fire laser bolts when Laser Battery is active |
 | `Escape` | Restart (return to start screen) |
 | `Ctrl+Shift+1–9` | **Dev:** Jump directly to wave 1–9 |
 | `Ctrl+Shift+0` | **Dev:** Jump to wave 10 |
+| `Ctrl+L` | **Dev:** Add 1 life |
 
 ## Brick Types
 
@@ -40,6 +41,9 @@ python3 -m http.server 4173
 | **B** Reflec Shield | Absorbs the next life-losing hit |
 | **P** Plasma Lane | Ball pierces bricks (2× damage) for 8s |
 | **+** Extra Life | +1 interceptor |
+| **L** Laser Battery | Arms twin laser bolts on `Space` for 12s |
+| **X** Blast Rounds | Ball hits destroy nearby bricks for 10s |
+| **C** Contact Breach | Ball hits destroy touching or overlapping bricks for 10s |
 
 ## Wave Progression
 
