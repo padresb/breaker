@@ -1,0 +1,21 @@
+# Context Snapshot
+
+- **Task statement:** Make 5 more cool fun levels for the Pong/Neon Siege Breaker game.
+- **Desired outcome:** Add five distinct, more interesting late-game wave variations without breaking current gameplay flow.
+- **Known facts / evidence:**
+  - Game is a single-file browser game with `main.js`, `index.html`, and `styles.css`.
+  - Waves already procedurally vary via `buildLevel(level)` in `main.js`.
+  - Existing wave progression has 3 layouts (`waves`, `spire`, `rings`) and movement modes that expand through level 6+.
+  - README documents waves 1–6+, so new levels likely need documentation updates.
+- **Constraints:**
+  - No new dependencies.
+  - Keep changes small and reversible.
+  - Must verify with fresh test/build evidence before completion.
+  - Ralph workflow requires planning artifacts and verification.
+- **Unknowns / open questions:**
+  - Whether “5 more levels” means five new fixed stages or five new procedural gimmicks.
+  - Whether the best user-visible change is new layouts, movement behaviors, or both.
+- **Likely codebase touchpoints:**
+  - `main.js` level generation and maybe wave-complete messaging.
+  - `README.md` progression docs.
+  - `.omx/plans/prd-*.md` and `.omx/plans/test-spec-*.md` for Ralph planning artifacts.
